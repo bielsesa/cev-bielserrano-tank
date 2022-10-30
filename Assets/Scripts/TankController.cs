@@ -1,36 +1,46 @@
+///
+/// Scripts creados por Biel Serrano Sánchez para el curso B-TS3DV1OA2223. 
+/// Ejercicio 03 del módulo de Desarrollo de entornos multidispositivo interactivos y videojuegos.
+/// Fecha: 16-10-2022
+///
+
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class TankController : MonoBehaviour
 {
+    [Header("Velocidades")]
     public float velocidadPosicion = 15.0f;
     public float velocidadRotacion = 50.0f;
-    public float cadenciaDisparoSegundos = 15f;
     [Space]
+    [Header("Temporizadores")]
+    public float cadenciaDisparoSegundos = 15f;
     public float temporizador = 5f;
     [Space]
     public ParticleSystem cannonParticleSystem;
+    [Space]
+    [Header("UI")]
+    public GameObject mensajeFinalObjetoUI;
+    public GameObject cadenciaDisparoObjetoUI;
+    public GameObject temporizadorObjetoUI;
 
-    private bool canPlay = true;
-    private bool canShoot = true;
-    private float projectileCooldownCurrent = 0;
+    private bool puedeJugar = true;
+    private bool puedeDisparar = true;
+    private float cadenciaDisparoActual = 0;
 
-    private GameObject endingMessageUI;
-    private GameObject projectileCooldownUI;
-    private TextMeshProUGUI projectileCooldownText;
+
+    private TextMeshProUGUI cadenciaDisparoText;
+    private TextMeshProUGUI temporizadorText;
 
     private void Start()
     {
-        endingMessageUI = GameObject.Find("/UI/EndingMessage");
-        endingMessageUI.SetActive(false);
+        mensajeFinalObjetoUI.SetActive(false);
 
-        projectileCooldownUI = GameObject.Find("/UI/ProjectileCooldownTitle/ProjectileCooldown");
-        projectileCooldownText = projectileCooldownUI.GetComponent<TextMeshProUGUI>();
-        projectileCooldownText.text = "Can shoot";
+        cadenciaDisparoText = cadenciaDisparoObjetoUI.GetComponent<TextMeshProUGUI>();
+        cadenciaDisparoText.text = "Can shoot";
+
+        temporizadorText = temporizadorObjetoUI.GetComponent<TextMeshProUGUI>();
     }
 
     void Update()
@@ -43,78 +53,90 @@ public class TankController : MonoBehaviour
 
     private void Temporizador()
     {
-        if (canPlay)
+        if (puedeJugar)
         {
             if (temporizador > 0)
             {
                 temporizador -= Time.deltaTime;
+                ActualizaTemporizadorUI(temporizador);
             }
             else
             {
-                canPlay = false;
+                puedeJugar = false;
                 temporizador = 0;
-                //TODO: Mostrar mensaje "Te has quedado sin gasolina"
-                //      Actualizar UI?
-                endingMessageUI.SetActive(true);
+                mensajeFinalObjetoUI.SetActive(true);
+                GameObject.Find("UI/ProjectileCooldownPanel").SetActive(false);
             }
         }
+    }
 
+    void ActualizaTemporizadorUI(float timeToDisplay)
+    {
+        float minutes = Mathf.FloorToInt(timeToDisplay / 60);
+        float seconds = Mathf.FloorToInt(timeToDisplay % 60);
+
+        if (minutes == -1)
+        {
+            minutes = 0;
+        }
+        if (seconds == -1)
+        {
+            seconds = 0;
+        }
+
+        temporizadorText.text = string.Format("{0:00}:{1:00}", minutes, seconds);
     }
 
     private void Rotar()
     {
-        if (canPlay && Input.GetAxis("Horizontal") != 0)
+        if (puedeJugar && Input.GetAxis("Horizontal") != 0)
         {
-            Vector3 movimientoRotacion = new Vector3(0f, Math.Sign(Input.GetAxis("Horizontal")) * velocidadRotacion * Time.deltaTime, 0f);
+            Vector3 movimientoRotacion = new(0f, Math.Sign(Input.GetAxis("Horizontal")) * velocidadRotacion * Time.deltaTime, 0f);
             transform.Rotate(movimientoRotacion, Space.Self);
         }
     }
 
     private void Mover()
     {
-        if (canPlay && Input.GetAxis("Vertical") != 0)
+        if (puedeJugar && Input.GetAxis("Vertical") != 0)
         {
-            Vector3 movimientoPosicion = new Vector3(0f, 0f, Math.Sign(Input.GetAxis("Vertical")) * velocidadPosicion * Time.deltaTime);
+            Vector3 movimientoPosicion = new(0f, 0f, Math.Sign(Input.GetAxis("Vertical")) * velocidadPosicion * Time.deltaTime);
             transform.Translate(movimientoPosicion, Space.Self);
         }
     }
-
 
     private void Disparar()
     {
         CompruebaCadencia();
 
-        if (canPlay && canShoot && Input.GetKeyDown(KeyCode.Space))
+        if (puedeJugar && puedeDisparar && Input.GetKeyDown(KeyCode.Space))
         {
             cannonParticleSystem.Play();
-            canShoot = false;
-            projectileCooldownCurrent = cadenciaDisparoSegundos;
+            puedeDisparar = false;
+            cadenciaDisparoActual = cadenciaDisparoSegundos;
 #if DEBUG
-            Debug.Log("Shot! Now canShoot is false and projectileCooldownCurrent has been reset to maximum cooldown");
+            Debug.Log("¡Disparo!");
 #endif
         }
     }
+
     private void CompruebaCadencia()
     {
-        if (canPlay)
+        if (puedeJugar)
         {
-            if (!canShoot && projectileCooldownCurrent <= 0f)
+            if (!puedeDisparar && cadenciaDisparoActual <= 0f)
             {
-                canShoot = true;
-                projectileCooldownText.text = "Can shoot";
+                puedeDisparar = true;
+                cadenciaDisparoText.text = "Can shoot";
 
 #if DEBUG
-                Debug.Log("Can shoot again");
+                Debug.Log("Se puede volver a disparar.");
 #endif
             }
-            else if (!canShoot)
+            else if (!puedeDisparar)
             {
-                projectileCooldownCurrent -= Time.deltaTime;
-                projectileCooldownText.text = ((int)projectileCooldownCurrent).ToString();
-#if DEBUG
-                Debug.Log("Projectile on cooldown...");
-                Debug.Log($"Projectile cooldown value: {projectileCooldownCurrent}");
-#endif
+                cadenciaDisparoActual -= Time.deltaTime;
+                cadenciaDisparoText.text = ((int)cadenciaDisparoActual).ToString();
             }
         }
     }
